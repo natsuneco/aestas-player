@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ギター練習用YouTubeプレーヤー</title>
+    <style>
+        /* --- CSS --- */
+        :root {
+            --primary-bg: #1e1e1e;
+            --secondary-bg: #2d2d2d;
+            --tertiary-bg: #3c3c3c;
+            --text-color: #e0e0e0;
+            --accent-color: #007bff;
+            --border-color: #555;
+        }
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            background-color: var(--primary-bg);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            background-color: var(--secondary-bg);
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+        }
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .player-section {
+            flex: 2;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .player-wrapper {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%; /* 16:9 Aspect Ratio */
+            background-color: #000;
+        }
+        #player {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .controls {
+            margin-top: 15px;
+            text-align: center;
+        }
+        .controls button {
+            font-size: 1.2em;
+            padding: 10px 20px;
+            margin: 0 8px;
+            cursor: pointer;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .controls button:hover {
+            background-color: #0056b3;
+        }
+        .controls button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+        #current-info {
+            margin-top: 15px;
+            text-align: center;
+            font-size: 1.1em;
+            height: 25px;
+        }
+        .playlist-section {
+            flex: 1;
+            padding: 20px;
+            background-color: var(--secondary-bg);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .add-video-form {
+            display: flex;
+            margin-bottom: 15px;
+        }
+        #youtube-url {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 3px 0 0 3px;
+            background-color: var(--tertiary-bg);
+            color: var(--text-color);
+        }
+        #add-video {
+            padding: 8px 15px;
+            cursor: pointer;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 0 3px 3px 0;
+        }
+        .global-settings {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: var(--tertiary-bg);
+            border-radius: 5px;
+        }
+        .global-settings label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        #bpm-input {
+            width: 80px;
+            padding: 5px;
+            background-color: var(--secondary-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+        }
+        #playlist {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        #playlist li {
+            background-color: var(--tertiary-bg);
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 5px solid transparent;
+            transition: border-color 0.3s, background-color 0.3s;
+        }
+        #playlist li.playing {
+            border-left-color: var(--accent-color);
+            background-color: #4a4a4a;
+        }
+        .video-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+        .video-settings {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            font-size: 0.9em;
+        }
+        .video-settings label {
+            display: flex;
+            flex-direction: column;
+        }
+        .video-settings input {
+            margin-top: 3px;
+            width: 80%;
+            padding: 5px;
+            background-color: var(--secondary-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+        }
+        .video-actions {
+            margin-top: 10px;
+        }
+        .video-actions button {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 5px 10px;
+            cursor: pointer;
+            margin-right: 5px;
+            border-radius: 3px;
+        }
+        .video-actions button:hover {
+            background-color: var(--border-color);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>ギター練習用YouTubeプレーヤー</h1>
+    </header>
+
+    <div class="main-container">
+        <section class="player-section">
+            <div class="player-wrapper">
+                <div id="player"></div>
+            </div>
+            <div id="current-info">プレイリストに動画を追加して再生してください</div>
+            <div class="controls">
+                <button id="prev-video" title="前の曲へ">⏮</button>
+                <button id="play-all" title="再生/一時停止">▶</button>
+                <button id="next-video" title="次の曲へ">⏭</button>
+            </div>
+        </section>
+
+        <section class="playlist-section">
+            <div class="add-video-form">
+                <input type="text" id="youtube-url" placeholder="YouTubeの動画URLを貼り付け">
+                <button id="add-video">追加</button>
+            </div>
+            
+            <!-- <div class="global-settings">
+                <label for="bpm-input">
+                    <span>カウントBPM:</span>
+                    <input type="number" id="bpm-input" value="120" min="40" max="240">
+                </label>
+            </div> -->
+
+            <ul id="playlist">
+                </ul>
+        </section>
+    </div>
+
+<script>
+// --- JavaScript ---
+(function() {
+    // 1. YouTube IFrame Player APIの非同期読み込み【修正点】
+    var tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api"; // 正しいAPIのURLに変更
+    var firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    let player;
+    let playlistData = [];
+    let currentVideoIndex = -1;
+    let endVideoTimer = null;
+    let intervalTimer = null;
+    let audioContext;
+
+    // DOM要素の取得
+    const urlInput = document.getElementById('youtube-url');
+    const addVideoBtn = document.getElementById('add-video');
+    const playlistElement = document.getElementById('playlist');
+    const playBtn = document.getElementById('play-all');
+    const prevBtn = document.getElementById('prev-video');
+    const nextBtn = document.getElementById('next-video');
+    const currentInfo = document.getElementById('current-info');
+    
+    // Web Audio APIの初期化
+    function initAudioContext() {
+        if (audioContext) return;
+        try {
+            window.AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioContext = new AudioContext();
+        } catch(e) {
+            console.error('Web Audio API is not supported in this browser');
+        }
+    }
+
+    // 2. APIの準備ができたらプレーヤーを初期化
+    window.onYouTubeIframeAPIReady = function() {
+        player = new YT.Player('player', {
+            height: '360',
+            width: '640',
+            playerVars: {
+                'playsinline': 1,
+                'controls': 0, 
+                'rel': 0, 
+                'modestbranding': 1,
+                'disablekb': 1,
+                'origin': window.location.href,
+            },
+            events: {
+                'onReady': onPlayerReady,
+                'onStateChange': onPlayerStateChange
+            }
+        });
+    }
+
+    function onPlayerReady(event) {
+        updateControlButtons();
+    }
+
+    function onPlayerStateChange(event) {
+        if (event.data == YT.PlayerState.PLAYING) {
+            playBtn.textContent = '❚❚';
+            playBtn.title = '一時停止';
+        } else {
+            playBtn.textContent = '▶';
+            playBtn.title = '再生';
+        }
+        
+        if (event.data == YT.PlayerState.ENDED) {
+            if (currentVideoIndex === -1 || !playlistData[currentVideoIndex]) return;
+
+            const currentVideo = playlistData[currentVideoIndex];
+            const interval = currentVideo.interval;
+
+            currentInfo.textContent = `${currentVideo.title} の再生が終了しました。${interval}秒後に次の曲へ...`;
+            
+            if (intervalTimer) clearTimeout(intervalTimer);
+            intervalTimer = setTimeout(playNextVideo, interval * 1000);
+        }
+    }
+
+    function getVideoIdFromUrl(url) {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length == 11) ? match[2] : null;
+    }
+
+    function timeToSeconds(timeStr) {
+        if (!timeStr || !timeStr.match(/^\d+:\d{1,2}$/)) return 0;
+        const parts = timeStr.split(':');
+        return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+    }
+
+    function renderPlaylist() {
+        playlistElement.innerHTML = '';
+        playlistData.forEach((video, index) => {
+            const li = document.createElement('li');
+            li.dataset.index = index;
+            li.innerHTML = `
+                <div class="video-title">${index + 1}. ${video.title}</div>
+                <div class="video-settings">
+                    <label>開始時間 (分:秒) <input type="text" class="start-time" value="${video.startTime}" placeholder="0:00"></label>
+                    <label>終了時間 (分:秒) <input type="text" class="end-time" value="${video.endTime}" placeholder="3:00"></label>
+                    <label>次の曲まで (秒) <input type="number" class="interval" value="${video.interval}" min="0"></label>
+                    <label>カウントイン <input type="checkbox" class="count-in" ${video.countIn ? 'checked' : ''}></label>
+                    <label>カウントインBPM <input type="number" class="count-in-bpm" value="120" min="0"></label>
+                </div>
+                <div class="video-actions">
+                    <button class="move-up" ${index === 0 ? 'disabled' : ''}>↑</button>
+                    <button class="move-down" ${index === playlistData.length - 1 ? 'disabled' : ''}>↓</button>
+                    <button class="delete-video">削除</button>
+                </div>
+            `;
+            playlistElement.appendChild(li);
+        });
+        updateControlButtons();
+    }
+    
+    function updateControlButtons() {
+        const hasVideos = playlistData.length > 0;
+        playBtn.disabled = !hasVideos;
+        prevBtn.disabled = !hasVideos || currentVideoIndex <= 0;
+        nextBtn.disabled = !hasVideos || currentVideoIndex >= playlistData.length - 1 && playlistData.length > 0;
+    }
+
+    // カウントイン音を再生 【BPM対応に修正】
+    function playCountIn(callback, countInBpm) {
+        initAudioContext();
+        if (!audioContext) {
+            if (callback) callback();
+            return;
+        }
+
+        // const bpmInput = document.getElementById('bpm-input');
+        const bpm = parseInt(countInBpm, 10) || 120;
+        const countInterval = (60 / bpm) * 1000; // BPMからミリ秒間隔を計算
+
+        const count = 4;
+        let currentCount = 0;
+
+        function playBeep() {
+            if (currentCount >= count) {
+                if (callback) callback();
+                return;
+            }
+            currentCount++;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.frequency.value = (currentCount === count) ? 987.77 : 659.25;
+            oscillator.type = 'sine';
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + 0.01);
+            gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.15);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.2);
+            
+            setTimeout(playBeep, countInterval);
+        }
+        
+        playBeep();
+    }
+
+    function playVideoByIndex(index) {
+        if (intervalTimer) clearTimeout(intervalTimer);
+        if (endVideoTimer) clearTimeout(endVideoTimer);
+
+        if (index < 0 || index >= playlistData.length) {
+            currentVideoIndex = -1;
+            player.stopVideo();
+            currentInfo.textContent = "プレイリストの再生が完了しました。";
+            updatePlaylistHighlight();
+            updateControlButtons();
+            return;
+        }
+        
+        currentVideoIndex = index;
+        const video = playlistData[index];
+        
+        currentInfo.textContent = `準備中: ${video.title}`;
+        updatePlaylistHighlight();
+        
+        const startSeconds = timeToSeconds(video.startTime);
+        const endSeconds = timeToSeconds(video.endTime);
+
+        const playAction = () => {
+            currentInfo.textContent = `再生中: ${video.title}`;
+            player.loadVideoById({
+                videoId: video.id,
+                startSeconds: startSeconds,
+            });
+            player.playVideo(); // 明示的に再生開始
+
+            if (endSeconds > startSeconds) {
+                const duration = (endSeconds - startSeconds) * 1000;
+                endVideoTimer = setTimeout(() => {
+                    if (player.getPlayerState() === YT.PlayerState.PLAYING && player.getVideoData().video_id === video.id) {
+                         onPlayerStateChange({ data: YT.PlayerState.ENDED });
+                    }
+                }, duration);
+            }
+        };
+
+        if (video.countIn) {
+            currentInfo.textContent = `カウントイン (BPM: ${video.countInBpm})...`;
+            playCountIn(playAction, video.countInBpm);
+        } else {
+            playAction();
+        }
+        updateControlButtons();
+    }
+
+    function playNextVideo() {
+        playVideoByIndex(currentVideoIndex + 1);
+    }
+    
+    function playPrevVideo() {
+        playVideoByIndex(currentVideoIndex - 1);
+    }
+    
+    function updatePlaylistHighlight() {
+        document.querySelectorAll('#playlist li').forEach(li => {
+            if (parseInt(li.dataset.index, 10) === currentVideoIndex) {
+                li.classList.add('playing');
+                li.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                li.classList.remove('playing');
+            }
+        });
+    }
+
+    // --- イベントリスナー ---
+    
+    addVideoBtn.addEventListener('click', () => {
+        const url = urlInput.value.trim();
+        if (!url) return;
+
+        const videoId = getVideoIdFromUrl(url);
+        if (videoId) {
+            const newVideo = {
+                id: videoId,
+                title: `Video ID: ${videoId}`,
+                startTime: '0:00',
+                endTime: '',
+                countIn: true,
+                interval: 5,
+                countInBpm: 120,
+            };
+            playlistData.push(newVideo);
+            renderPlaylist();
+            urlInput.value = '';
+        } else {
+            alert('有効なYouTube動画のURLを入力してください。');
+        }
+    });
+    
+    urlInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') addVideoBtn.click();
+    });
+
+    playlistElement.addEventListener('change', (e) => {
+        const target = e.target;
+        const li = target.closest('li');
+        if (!li) return;
+
+        const index = parseInt(li.dataset.index, 10);
+        const video = playlistData[index];
+
+        if (target.classList.contains('start-time')) video.startTime = target.value;
+        if (target.classList.contains('end-time')) video.endTime = target.value;
+        if (target.classList.contains('interval')) video.interval = parseInt(target.value, 10) || 0;
+        if (target.classList.contains('count-in')) video.countIn = target.checked;
+        if (target.classList.contains('count-in-bpm')) video.countInBpm = parseInt(target.value, 10) || 120;
+    });
+
+    playlistElement.addEventListener('click', (e) => {
+        const target = e.target;
+        const li = target.closest('li');
+        if (!li) return;
+        
+        const index = parseInt(li.dataset.index, 10);
+
+        if (target.classList.contains('delete-video')) {
+            if (confirm(`「${playlistData[index].title}」を削除しますか？`)) {
+                playlistData.splice(index, 1);
+                if (index === currentVideoIndex) {
+                    player.stopVideo();
+                    if(endVideoTimer) clearTimeout(endVideoTimer);
+                    if(intervalTimer) clearTimeout(intervalTimer);
+                    playVideoByIndex(index);
+                } else if (index < currentVideoIndex) {
+                    currentVideoIndex--;
+                }
+                renderPlaylist();
+                updatePlaylistHighlight();
+            }
+        } else if (target.classList.contains('move-up') && index > 0) {
+            [playlistData[index], playlistData[index - 1]] = [playlistData[index - 1], playlistData[index]];
+            renderPlaylist();
+            updatePlaylistHighlight();
+        } else if (target.classList.contains('move-down') && index < playlistData.length - 1) {
+            [playlistData[index], playlistData[index + 1]] = [playlistData[index + 1], playlistData[index]];
+            renderPlaylist();
+            updatePlaylistHighlight();
+        }
+    });
+    
+    playBtn.addEventListener('click', () => {
+        initAudioContext();
+        if (!player || playlistData.length === 0) return;
+        
+        const playerState = player.getPlayerState();
+        
+        if (playerState === YT.PlayerState.PLAYING) {
+            player.pauseVideo();
+        } else {
+            if (currentVideoIndex === -1) {
+                playVideoByIndex(0);
+            } else {
+                player.playVideo();
+            }
+        }
+    });
+    
+    nextBtn.addEventListener('click', playNextVideo);
+    prevBtn.addEventListener('click', playPrevVideo);
+
+})();
+</script>
+
+</body>
+</html>
